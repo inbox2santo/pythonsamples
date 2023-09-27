@@ -25,8 +25,8 @@ def insert_section_by_token(yaml_data, token, new_section_yaml_path):
     return False  # Key does not point to a dictionary
 
 if __name__ == "__main__":
-    input_yaml_file_path = "path/to/your/deployment.yaml"  # Path to the DeploymentConfig YAML file
-    token = "objects[0].spec.template.spec.containers[0].resources"  # Token specifying the location to insert
+    input_yaml_file_path = "path/to/your/template.yaml"  # Path to the Template YAML file
+    token = "objects[0].spec.template"  # Token specifying the location to insert
     new_section_yaml_path = "path/to/your/new_section.yaml"  # Path to the YAML file containing the new_section content
 
     with open(input_yaml_file_path, 'r') as file:
