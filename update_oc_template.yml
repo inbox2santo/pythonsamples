@@ -1,0 +1,40 @@
+import yaml
+
+def insert_section_by_token(yaml_data, token, new_section_yaml_path):
+    keys = token.split(".")
+    current_data = yaml_data
+
+    # Traverse the YAML structure to find the parent dictionary where the new section should be added
+    for key in keys[:-1]:
+        if key.isdigit():
+            key = int(key)  # Convert to integer for list indexing
+        if key in current_data:
+            current_data = current_data[key]
+        else:
+            return False  # The key or path doesn't exist
+
+    # Check if the target is a dictionary
+    if isinstance(current_data, dict):
+        # Load the new_section from the YAML file and add it to the current dictionary
+        with open(new_section_yaml_path, 'r') as new_section_file:
+            new_section = yaml.safe_load(new_section_file)
+
+        current_data[keys[-1]] = new_section
+        return True
+
+    return False  # Key does not point to a dictionary
+
+if __name__ == "__main__":
+    input_yaml_file_path = "path/to/your/deployment.yaml"  # Path to the DeploymentConfig YAML file
+    token = "objects[0].spec.template.spec.containers[0].resources"  # Token specifying the location to insert
+    new_section_yaml_path = "path/to/your/new_section.yaml"  # Path to the YAML file containing the new_section content
+
+    with open(input_yaml_file_path, 'r') as file:
+        yaml_data = yaml.safe_load(file)
+
+    if insert_section_by_token(yaml_data, token, new_section_yaml_path):
+        with open(input_yaml_file_path, 'w') as file:
+            yaml.dump(yaml_data, file, default_flow_style=False)
+        print(f"New section inserted at token location '{token}' from '{new_section_yaml_path}'")
+    else:
+        print(f"Failed to insert section at token location '{token}' or invalid key path")
