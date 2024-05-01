@@ -1,0 +1,14 @@
+# proxy settings
+function setproxy() {
+
+export {all,http,https,ftp}_proxy='http://localhost:3128'
+export {ALL,HTTP,HTTPS,FTP}_PROXY='http://localhost:3128'
+export no_proxy="$NO_PROXY"
+
+}
+
+function unsetproxy() {
+unset {all,http,https,ftp}
+unset {ALL,HTTP,HTTPS,FTP}
+
+}
