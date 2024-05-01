@@ -46,3 +46,12 @@ if remote_branch_exists(branch_name):
 else:
     print(f"The remote branch '{branch_name}' does not exist.")
 
+
+####
+
+def remote_branch_exists(branch_name):
+    try:
+        output = subprocess.check_output(['git', 'ls-remote', '--heads', 'origin', branch_name])
+        return bool(output)
+    except subprocess.CalledProcessError:
+        return False
