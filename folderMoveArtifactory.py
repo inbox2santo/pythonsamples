@@ -18,10 +18,13 @@ def get_folders_in_path(repo, path):
     url = f'{artifactory_url}/api/storage/{repo}/{path}?list&deep=1'
     print(f'Fetching folders from URL: {url}')  # Debugging output
     response = requests.get(url, auth=HTTPBasicAuth(username, password))
-    response.raise_for_status()
-    data = response.json()
-    print(f'API Response (get_folders_in_path): {data}')  # Debugging output
-    return data.get('folders', [])
+    if response.status_code == 200:
+        data = response.json()
+        print(f'API Response (get_folders_in_path): {data}')  # Debugging output
+        return data.get('folders', [])
+    else:
+        print(f'Failed to fetch folders: {response.status_code} - {response.content.decode()}')
+        return []
 
 def get_files_in_folder(repo, folder_uri):
     """
@@ -30,10 +33,13 @@ def get_files_in_folder(repo, folder_uri):
     url = f'{artifactory_url}/api/storage/{repo}/{folder_uri}?list&deep=1'
     print(f'Fetching files from URL: {url}')  # Debugging output
     response = requests.get(url, auth=HTTPBasicAuth(username, password))
-    response.raise_for_status()
-    data = response.json()
-    print(f'API Response (get_files_in_folder): {data}')  # Debugging output
-    return data.get('files', [])
+    if response.status_code == 200:
+        data = response.json()
+        print(f'API Response (get_files_in_folder): {data}')  # Debugging output
+        return data.get('files', [])
+    else:
+        print(f'Failed to fetch files: {response.status_code} - {response.content.decode()}')
+        return []
 
 def move_files(files, repo, source_path, target_path, dry_run=False):
     """
