@@ -1,4 +1,5 @@
-import subprocess
+import requests
+from requests.auth import HTTPBasicAuth
 import json
 
 # Artifactory details
@@ -8,41 +9,29 @@ source_path = 'path1'
 username = '<username>'
 password = '<password>'
 
-def run_curl_command(url):
+def get_folders_in_path(repo, path):
     """
-    Run curl command and return the output.
-    """
-    result = subprocess.run(
-        ['curl', '-u', f'{username}:{password}', '-v', url],
-        capture_output=True, text=True
-    )
-    if result.returncode != 0:
-        print(f'Curl command failed: {result.stderr}')
-    return result.stdout
-
-def get_folders_in_path_curl(repo, path):
-    """
-    Get all folders using curl.
+    Get all folders in the specified path within the repository.
     """
     url = f'{artifactory_url}/api/storage/{repo}/{path}?list&deep=1'
-    print(f'Fetching folders with curl from URL: {url}')  # Debugging output
-    response = run_curl_command(url)
-    print(f'Raw API Response (get_folders_in_path): {response}')  # Debugging output
-    try:
-        data = json.loads(response)
-        return data.get('folders', [])
-    except json.JSONDecodeError as e:
-        print(f'Error decoding JSON response: {e}')
-        return []
+    print(f'Fetching folders from URL: {url}')  # Debugging output
+    response = requests.get(url, auth=HTTPBasicAuth(username, password))
+    response.raise_for_status()
+    data = response.json()
+    print(f'Raw API Response (get_folders_in_path): {json.dumps(data, indent=2)}')  # Debugging output
+    return data.get('folders', [])
 
 def main():
     """
     Main function to get folders and print them.
     """
-    folders = get_folders_in_path_curl(repo, source_path)
-    print(f'Found {len(folders)} folders in {repo}/{source_path}')
-    for folder in folders:
-        print(f'Folder: {folder["uri"]}')
+    try:
+        folders = get_folders_in_path(repo, source_path)
+        print(f'Found {len(folders)} folders in {repo}/{source_path}')
+        for folder in folders:
+            print(f'Folder: {folder["uri"]}')
+    except requests.exceptions.RequestException as e:
+        print(f'Error: {e}')
 
 if __name__ == '__main__':
     main()
