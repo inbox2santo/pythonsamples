@@ -1,0 +1,30 @@
+# to prep a python env
+pipeline:
+  agent:
+    label: 'python' # Change to a label that matches your Jenkins agent
+    
+  environment:
+    # Define environment variables for Artifactory credentials
+    ARTIFACTORY_USERNAME: 'your-username'
+    ARTIFACTORY_PASSWORD: 'your-password'
+    PIP_CONFIG_FILE: '/root/.pip/pip.conf' # Path where pip.conf will be created
+    
+  stages:
+    - stage: Setup
+      steps:
+        - script:
+            # Create pip.conf with the Artifactory URL and credentials
+            echo "[global]" > $PIP_CONFIG_FILE
+            echo "index-url = https://${ARTIFACTORY_USERNAME}:${ARTIFACTORY_PASSWORD}@artifactory.example.com/artifactory/api/pypi/pypi-remote/simple" >> $PIP_CONFIG_FILE
+            echo "[install]" >> $PIP_CONFIG_FILE
+            echo "extra-index-url =" >> $PIP_CONFIG_FILE
+            echo "    https://pypi.org/simple" >> $PIP_CONFIG_FILE
+            echo "    https://custom.index.com/simple" >> $PIP_CONFIG_FILE
+
+    - stage: Install Dependencies
+      steps:
+        - script:
+            # Ensure pip is installed and then install the packages
+            python -m ensurepip --upgrade
+            pip install --upgrade pip
+            pip install <package-name>
