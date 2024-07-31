@@ -23,7 +23,7 @@ def get_folders_in_path(repo, path):
     print(f'Raw API Response (get_folders_in_path): {data}')  # Debugging output
 
     # Extract folders from the response
-    folders = [item for item in data.get('files', []) if item.get('uri').endswith('/')]
+    folders = [item for item in data.get('files', [])]
     return folders
 
 def move_folder(repo, source_folder_uri, target_folder_path, dry_run=False):
