@@ -1,0 +1,52 @@
+pipeline {
+    agent any
+
+    parameters {
+        string(name: 'ARTIFACTORY_URL', defaultValue: 'http://<artifactory-url>/artifactory', description: 'URL of the Artifactory server')
+        string(name: 'REPO', defaultValue: 'repo1', description: 'Repository name')
+        string(name: 'SOURCE_PATH', defaultValue: 'path1', description: 'Source path in the repository')
+        string(name: 'TARGET_PATH', defaultValue: 'archive', description: 'Target path in the repository')
+        string(name: 'USERNAME', defaultValue: '<username>', description: 'Artifactory username')
+        string(name: 'PASSWORD', defaultValue: '<password>', description: 'Artifactory password')
+        string(name: 'FOLDER_PATTERN', defaultValue: 'CAAP_2023*', description: 'Pattern for folders to move')
+        booleanParam(name: 'DRY_RUN', defaultValue: false, description: 'Perform a dry run without making changes')
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                // Checkout the repository containing the Python script
+                git url: 'http://<your-repo-url>', branch: 'main'
+            }
+        }
+
+        stage('Run Python Script') {
+            steps {
+                script {
+                    // Pass parameters to the Python script
+                    def pythonScript = 'move_folders.py'
+                    def artifactoryUrl = "${params.ARTIFACTORY_URL}"
+                    def repo = "${params.REPO}"
+                    def sourcePath = "${params.SOURCE_PATH}"
+                    def targetPath = "${params.TARGET_PATH}"
+                    def username = "${params.USERNAME}"
+                    def password = "${params.PASSWORD}"
+                    def folderPattern = "${params.FOLDER_PATTERN}"
+                    def dryRun = params.DRY_RUN ? '--dry-run' : ''
+
+                    sh """
+                    python ${pythonScript} \\
+                        --artifactory-url=${artifactoryUrl} \\
+                        --repo=${repo} \\
+                        --source-path=${sourcePath} \\
+                        --target-path=${targetPath} \\
+                        --username=${username} \\
+                        --password=${password} \\
+                        --folder-pattern=${folderPattern} \\
+                        ${dryRun}
+                    """
+                }
+            }
+        }
+    }
+}
