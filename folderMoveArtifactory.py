@@ -1,7 +1,6 @@
 import requests
 from requests.auth import HTTPBasicAuth
 import fnmatch
-import os
 
 # Artifactory details
 artifactory_url = 'http://<artifactory-url>/artifactory'
@@ -17,18 +16,24 @@ def get_folders_in_path(repo, path):
     Get all folders in the specified path within the repository.
     """
     url = f'{artifactory_url}/api/storage/{repo}/{path}?list&deep=1'
+    print(f'Fetching folders from URL: {url}')  # Debugging output
     response = requests.get(url, auth=HTTPBasicAuth(username, password))
     response.raise_for_status()
-    return response.json().get('folders', [])
+    data = response.json()
+    print(f'API Response (get_folders_in_path): {data}')  # Debugging output
+    return data.get('folders', [])
 
 def get_files_in_folder(repo, folder_uri):
     """
     Get all files within a specific folder in the repository.
     """
     url = f'{artifactory_url}/api/storage/{repo}/{folder_uri}?list&deep=1'
+    print(f'Fetching files from URL: {url}')  # Debugging output
     response = requests.get(url, auth=HTTPBasicAuth(username, password))
     response.raise_for_status()
-    return response.json().get('files', [])
+    data = response.json()
+    print(f'API Response (get_files_in_folder): {data}')  # Debugging output
+    return data.get('files', [])
 
 def move_files(files, repo, source_path, target_path, dry_run=False):
     """
@@ -64,9 +69,11 @@ def main(dry_run=False):
         print(f'Found {len(folders)} folders in {repo}/{source_path}')
 
         for folder in folders:
-            if fnmatch.fnmatch(folder['uri'].split('/')[-1], folder_pattern):
+            folder_name = folder['uri'].split('/')[-1]
+            if fnmatch.fnmatch(folder_name, folder_pattern):
                 print(f'Processing folder: {folder["uri"]}')
                 files = get_files_in_folder(repo, folder['uri'])
+                print(f'Found {len(files)} files in folder {folder["uri"]}')
                 move_files(files, repo, source_path, target_path, dry_run)
                 
     except requests.exceptions.RequestException as e:
