@@ -24,7 +24,7 @@ def main():
     date_str = past_date.strftime("%Y-%m-%dT%H:%M:%S.000Z")
 
     # AQL query to find artifacts downloaded in the last `args.archive_days` days
-    aql_query = f'items.find({{"repo": "{args.source_repo}", "path": "{args.source_path}", "stat.downloaded": {{"$gt": "{date_str}"}}}})'
+    aql_query = f'items.find({{"repo": "{args.source_repo}", "path": {{"$match" : "{args.source_path}*"}}, "stat.downloaded": {{"$gt": "{date_str}"}}}})'
 
     # Execute the AQL query
     response = requests.post(
@@ -34,8 +34,12 @@ def main():
         data=aql_query
     )
 
+    # Check response status and print the response for debugging
     if response.status_code == 200:
-        artifacts = response.json()['results']
+        artifacts = response.json().get('results', [])
+        if not artifacts:
+            print("No artifacts found matching the criteria.")
+            return
         
         for artifact in artifacts:
             repo = artifact['repo']
