@@ -66,7 +66,9 @@ def is_older_than_3_months(date_string):
     Check if a given date string is older than 3 months from the current date.
     """
     date = dateutil.parser.parse(date_string)
-    three_months_ago = datetime.now() - timedelta(days=90)
+    if date.tzinfo is None:
+        date = date.replace(tzinfo=timezone.utc)
+    three_months_ago = datetime.now(timezone.utc) - timedelta(days=90)
     return date < three_months_ago
 
 def main(artifactory_url, repo, source_path, target_path, username, password, folder_pattern, dry_run=False):
