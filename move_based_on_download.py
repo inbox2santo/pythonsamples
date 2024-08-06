@@ -26,6 +26,8 @@ def main():
     # AQL query to find artifacts downloaded in the last `args.archive_days` days
     aql_query = f'items.find({{"repo": "{args.source_repo}", "path": {{"$match" : "{args.source_path}*"}}, "stat.downloaded": {{"$gt": "{date_str}"}}}})'
 
+    print(f"Executing AQL Query: {aql_query}")
+
     # Execute the AQL query
     response = requests.post(
         f"{args.artifactory_url}/api/search/aql",
@@ -34,9 +36,13 @@ def main():
         data=aql_query
     )
 
-    # Check response status and print the response for debugging
+    print(f"Response Status Code: {response.status_code}")
+    print(f"Response Text: {response.text}")
+
     if response.status_code == 200:
         artifacts = response.json().get('results', [])
+        print(f"Found {len(artifacts)} artifacts.")
+        
         if not artifacts:
             print("No artifacts found matching the criteria.")
             return
@@ -55,11 +61,14 @@ def main():
             }
 
             move_response = requests.post(
-                f"{args.artifactory_url}/api/move/{full_path}",
+                f"{args.artifactory-url}/api/move/{full_path}",
                 auth=(args.username, args.password),
                 headers={"Content-Type": "application/json"},
                 data=json.dumps(move_payload)
             )
+
+            print(f"Move API Status Code: {move_response.status_code}")
+            print(f"Move API Response: {move_response.text}")
 
             if move_response.status_code == 200:
                 if args.dry_run:
