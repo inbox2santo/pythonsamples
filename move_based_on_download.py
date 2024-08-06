@@ -9,20 +9,22 @@ def parse_arguments():
     parser.add_argument('--username', required=True, help='Artifactory username.')
     parser.add_argument('--password', required=True, help='Artifactory password.')
     parser.add_argument('--source-repo', required=True, help='Source repository.')
+    parser.add_argument('--source-path', required=True, help='Path in the source repository.')
     parser.add_argument('--archive-repo', required=True, help='Archive repository.')
     parser.add_argument('--archive-path', required=True, help='Path in the archive repository.')
-    parser.add_argument('--months', type=int, default=3, help='Number of months to consider for last download.')
+    parser.add_argument('--archive-days', type=int, default=90, help='Number of days to consider for last download.')
+    parser.add_argument('--dry-run', action='store_true', help='Perform a dry run without moving artifacts.')
     return parser.parse_args()
 
 def main():
     args = parse_arguments()
 
-    # Calculate the date `args.months` months ago
-    past_date = datetime.now() - timedelta(days=args.months * 30)
+    # Calculate the date `args.archive_days` days ago
+    past_date = datetime.now() - timedelta(days=args.archive_days)
     date_str = past_date.strftime("%Y-%m-%dT%H:%M:%S.000Z")
 
-    # AQL query to find artifacts downloaded in the last `args.months` months
-    aql_query = f'items.find({{"repo": "{args.source_repo}", "stat.downloaded": {{"$gt": "{date_str}"}}}})'
+    # AQL query to find artifacts downloaded in the last `args.archive_days` days
+    aql_query = f'items.find({{"repo": "{args.source_repo}", "path": "{args.source_path}", "stat.downloaded": {{"$gt": "{date_str}"}}}})'
 
     # Execute the AQL query
     response = requests.post(
@@ -45,7 +47,7 @@ def main():
             move_payload = {
                 "targetRepo": args.archive_repo,
                 "targetPath": args.archive_path,
-                "dryRun": False
+                "dryRun": args.dry_run
             }
 
             move_response = requests.post(
@@ -56,7 +58,10 @@ def main():
             )
 
             if move_response.status_code == 200:
-                print(f"Successfully moved {full_path} to {args.archive_repo}/{args.archive_path}")
+                if args.dry_run:
+                    print(f"Dry run: {full_path} would be moved to {args.archive_repo}/{args.archive_path}")
+                else:
+                    print(f"Successfully moved {full_path} to {args.archive_repo}/{args.archive_path}")
             else:
                 print(f"Failed to move {full_path}: {move_response.text}")
     else:
