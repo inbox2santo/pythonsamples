@@ -16,69 +16,61 @@ def parse_arguments():
     parser.add_argument('--dry-run', action='store_true', help='Perform a dry run without moving artifacts.')
     return parser.parse_args()
 
+def get_artifacts(artifactory_url, repo, path, auth):
+    url = f"{artifactory_url}/api/storage/{repo}/{path}?list"
+    response = requests.get(url, auth=auth)
+    if response.status_code == 200:
+        return response.json().get('files', [])
+    else:
+        print(f"Failed to list artifacts: {response.text}")
+        return []
+
+def get_artifact_metadata(artifactory_url, repo, path, name, auth):
+    url = f"{artifactory_url}/api/storage/{repo}/{path}/{name}"
+    response = requests.get(url, auth=auth)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        print(f"Failed to get metadata for {name}: {response.text}")
+        return {}
+
+def move_artifact(artifactory_url, repo, path, name, target_repo, target_path, dry_run, auth):
+    source_url = f"{artifactory_url}/api/storage/{repo}/{path}/{name}"
+    target_url = f"{artifactory_url}/api/move/{source_url}"
+    payload = {
+        "targetRepo": target_repo,
+        "targetPath": target_path,
+        "dryRun": dry_run
+    }
+    response = requests.post(target_url, auth=auth, headers={"Content-Type": "application/json"}, data=json.dumps(payload))
+    if response.status_code == 200:
+        if dry_run:
+            print(f"Dry run: {path}/{name} would be moved to {target_repo}/{target_path}")
+        else:
+            print(f"Successfully moved {path}/{name} to {target_repo}/{target_path}")
+    else:
+        print(f"Failed to move {path}/{name}: {response.text}")
+
 def main():
     args = parse_arguments()
+    auth = (args.username, args.password)
 
-    # Calculate the date `args.archive_days` days ago
     past_date = datetime.now() - timedelta(days=args.archive_days)
     date_str = past_date.strftime("%Y-%m-%dT%H:%M:%S.000Z")
 
-    # AQL query to find artifacts downloaded in the last `args.archive_days` days
-    aql_query = f'items.find({{"repo": "{args.source_repo}", "path": {{"$match" : "{args.source_path}*"}}, "stat.downloaded": {{"$gt": "{date_str}"}}}})'
+    artifacts = get_artifacts(args.artifactory_url, args.source_repo, args.source_path, auth)
 
-    print(f"Executing AQL Query: {aql_query}")
+    for artifact in artifacts:
+        name = artifact.get('uri').split('/')[-1]
+        metadata = get_artifact_metadata(args.artifactory_url, args.source_repo, args.source_path, name, auth)
+        last_downloaded = metadata.get('lastModified', '')
 
-    # Execute the AQL query
-    response = requests.post(
-        f"{args.artifactory_url}/api/search/aql",
-        auth=(args.username, args.password),
-        headers={"Content-Type": "text/plain"},
-        data=aql_query
-    )
-
-    print(f"Response Status Code: {response.status_code}")
-    print(f"Response Text: {response.text}")
-
-    if response.status_code == 200:
-        artifacts = response.json().get('results', [])
-        print(f"Found {len(artifacts)} artifacts.")
-        
-        if not artifacts:
-            print("No artifacts found matching the criteria.")
-            return
-        
-        for artifact in artifacts:
-            repo = artifact['repo']
-            path = artifact['path']
-            name = artifact['name']
-            full_path = f"{repo}/{path}/{name}"
-
-            # Move the artifact
-            move_payload = {
-                "targetRepo": args.archive_repo,
-                "targetPath": args.archive_path,
-                "dryRun": args.dry_run
-            }
-
-            move_response = requests.post(
-                f"{args.artifactory-url}/api/move/{full_path}",
-                auth=(args.username, args.password),
-                headers={"Content-Type": "application/json"},
-                data=json.dumps(move_payload)
-            )
-
-            print(f"Move API Status Code: {move_response.status_code}")
-            print(f"Move API Response: {move_response.text}")
-
-            if move_response.status_code == 200:
-                if args.dry_run:
-                    print(f"Dry run: {full_path} would be moved to {args.archive_repo}/{args.archive_path}")
-                else:
-                    print(f"Successfully moved {full_path} to {args.archive_repo}/{args.archive_path}")
-            else:
-                print(f"Failed to move {full_path}: {move_response.text}")
-    else:
-        print(f"Failed to execute AQL query: {response.text}")
+        if last_downloaded:
+            last_downloaded_date = datetime.strptime(last_downloaded, "%Y-%m-%dT%H:%M:%S.%fZ")
+            if last_downloaded_date < past_date:
+                move_artifact(args.artifactory_url, args.source_repo, args.source_path, name, args.archive_repo, args.archive_path, args.dry_run, auth)
+        else:
+            print(f"No last download date for {name}")
 
 if __name__ == '__main__':
     main()
