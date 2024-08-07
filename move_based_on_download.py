@@ -16,23 +16,22 @@ def parse_arguments():
     parser.add_argument('--dry-run', action='store_true', help='Perform a dry run without moving artifacts.')
     return parser.parse_args()
 
-def get_artifacts(artifactory_url, repo, path, auth):
-    url = f"{artifactory_url}/api/storage/{repo}/{path}?list&deep=1"
-    response = requests.get(url, auth=auth)
+def get_artifacts_via_aql(artifactory_url, repo, path, days, auth):
+    past_date = (datetime.now() - timedelta(days=days)).isoformat() + 'Z'
+    aql_query = f"""
+    items.find({{
+      "repo": "{repo}",
+      "path": {{"$match": "{path}/*"}},
+      "type": "file",
+      "stat.downloaded": {{"$gt": "{past_date}"}}
+    }}).include("name", "repo", "path", "stat.downloaded")
+    """
+    response = requests.post(f"{artifactory_url}/api/search/aql", data=aql_query, auth=auth, headers={"Content-Type": "text/plain"})
     if response.status_code == 200:
-        return response.json().get('files', [])
+        return response.json().get('results', [])
     else:
-        print(f"Failed to list artifacts: {response.text}")
+        print(f"Failed to execute AQL query: {response.text}")
         return []
-
-def get_artifact_properties(artifactory_url, repo, path, name, auth):
-    url = f"{artifactory_url}/api/storage/{repo}/{path}/{name}?properties"
-    response = requests.get(url, auth=auth)
-    if response.status_code == 200:
-        return response.json().get('properties', {})
-    else:
-        print(f"Failed to get properties for {name}: {response.text}")
-        return {}
 
 def move_artifact(artifactory_url, source_repo, source_path, name, target_repo, target_path, dry_run, auth):
     source_full_path = f"{source_repo}/{source_path}/{name}"
@@ -53,25 +52,11 @@ def main():
     args = parse_arguments()
     auth = (args.username, args.password)
 
-    past_date = datetime.now() - timedelta(days=args.archive_days)
-
-    artifacts = get_artifacts(args.artifactory_url, args.source_repo, args.source_path, auth)
+    artifacts = get_artifacts_via_aql(args.artifactory_url, args.source_repo, args.source_path, args.archive_days, auth)
 
     for artifact in artifacts:
-        if artifact.get('folder', False):
-            continue  # Skip folders
-
-        name = artifact.get('uri').split('/')[-1]
-        properties = get_artifact_properties(args.artifactory_url, args.source_repo, args.source_path, name, auth)
-        last_downloaded = properties.get('lastDownloaded', [])
-
-        if last_downloaded:
-            # Assume the property is a list of strings and take the first value
-            last_downloaded_date = datetime.strptime(last_downloaded[0], "%Y-%m-%dT%H:%M:%S.%fZ")
-            if last_downloaded_date < past_date:
-                move_artifact(args.artifactory_url, args.source_repo, args.source_path, name, args.archive_repo, args.archive_path, args.dry_run, auth)
-        else:
-            print(f"No last download date for {name}")
+        name = artifact['name']
+        move_artifact(args.artifactory_url, args.source_repo, args.source_path, name, args.archive_repo, args.archive_path, args.dry_run, auth)
 
 if __name__ == '__main__':
     main()
