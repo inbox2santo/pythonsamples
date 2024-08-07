@@ -19,18 +19,21 @@ def parse_arguments():
 def get_artifacts_via_aql(artifactory_url, repo, path, days, auth):
     past_date = (datetime.now() - timedelta(days=days)).isoformat() + 'Z'
     aql_query = f"""
-    items.find({{
+    items.find({
       "repo": "{repo}",
       "path": {{"$match": "{path}/*"}},
       "type": "file",
       "stat.downloaded": {{"$gt": "{past_date}"}}
-    }}).include("name", "repo", "path", "stat.downloaded")
+    }).include("name", "repo", "path", "stat.downloaded")
     """
-    response = requests.post(f"{artifactory_url}/api/search/aql", data=aql_query, auth=auth, headers={"Content-Type": "text/plain"})
+    headers = {"Content-Type": "text/plain"}
+    response = requests.post(f"{artifactory_url}/api/search/aql", data=aql_query, auth=auth, headers=headers)
+    
     if response.status_code == 200:
         return response.json().get('results', [])
     else:
-        print(f"Failed to execute AQL query: {response.text}")
+        print(f"Failed to execute AQL query. Status code: {response.status_code}")
+        print(f"Response body: {response.text}")
         return []
 
 def move_artifact(artifactory_url, source_repo, source_path, name, target_repo, target_path, dry_run, auth):
@@ -46,7 +49,8 @@ def move_artifact(artifactory_url, source_repo, source_path, name, target_repo, 
     if response.status_code == 200:
         print(f"Successfully moved {source_full_path} to {target_full_path}")
     else:
-        print(f"Failed to move {source_full_path}: {response.text}")
+        print(f"Failed to move {source_full_path}. Status code: {response.status_code}")
+        print(f"Response body: {response.text}")
 
 def main():
     args = parse_arguments()
