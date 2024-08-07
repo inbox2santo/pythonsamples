@@ -2,3 +2,7 @@ https://jfrog.com/help/r/artifactory-how-to-use-an-access-token-environment-vari
 
 
 curl -u <username>:<password> "http://<artifactory-url>/artifactory/api/storage/<repo>/<path>?list&deep=1"
+
+
+curl -u <username>:<password> -X GET "https://<artifactory-url>/artifactory/api/storage/<repo>/<path>/<artifact>?properties"
+
