@@ -10,3 +10,5 @@ curl -u my-username:my-password -X GET "https://artifactory.example.com/artifact
 
 
 curl -u my-username:my-password -X GET "https://artifactory.example.com/artifactory/api/storage/my-repo/path/to/artifact/my-artifact.jar?properties"
+
+curl -u <username>:<password> -X GET "https://<artifactory-url>/artifactory/api/storage/<repo>/<path>/<artifact>"
