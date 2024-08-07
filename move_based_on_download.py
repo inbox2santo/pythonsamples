@@ -26,13 +26,16 @@ def get_artifacts_via_aql(artifactory_url, repo, path, days, auth):
         f'"stat.downloaded": {{"$gt": "{past_date}"}}'
         f'}}).include("name", "repo", "path", "stat.downloaded")'
     )
-    
+
+    print(f"Executing AQL query:\n{aql_query}")
+
     headers = {"Content-Type": "text/plain"}
     response = requests.post(f"{artifactory_url}/api/search/aql", data=aql_query, auth=auth, headers=headers)
     
     if response.status_code == 200:
         result = response.json().get('results', [])
         print(f"Artifacts found: {len(result)}")
+        print(f"Artifacts: {result}")
         return result
     else:
         print(f"Failed to execute AQL query. Status code: {response.status_code}")
