@@ -18,14 +18,15 @@ def parse_arguments():
 
 def get_artifacts_via_aql(artifactory_url, repo, path, days, auth):
     past_date = (datetime.now() - timedelta(days=days)).isoformat() + 'Z'
-    aql_query = f'''
-    items.find({
-      "repo": "{repo}",
-      "path": {{"$match": "{path}/*"}},
-      "type": "file",
-      "stat.downloaded": {{"$gt": "{past_date}"}}
-    }).include("name", "repo", "path", "stat.downloaded")
-    '''
+    aql_query = (
+        f'items.find('
+        f'{{"repo": "{repo}",'
+        f'"path": {{"$match": "{path}/*"}},'
+        f'"type": "file",'
+        f'"stat.downloaded": {{"$gt": "{past_date}"}}'
+        f'}}).include("name", "repo", "path", "stat.downloaded")'
+    )
+    
     headers = {"Content-Type": "text/plain"}
     response = requests.post(f"{artifactory_url}/api/search/aql", data=aql_query, auth=auth, headers=headers)
     
