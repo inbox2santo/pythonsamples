@@ -12,3 +12,21 @@ curl -u my-username:my-password -X GET "https://artifactory.example.com/artifact
 curl -u my-username:my-password -X GET "https://artifactory.example.com/artifactory/api/storage/my-repo/path/to/artifact/my-artifact.jar?properties"
 
 curl -u <username>:<password> -X GET "https://<artifactory-url>/artifactory/api/storage/<repo>/<path>/<artifact>"
+
+
+
+AQL---------
+
+
+items.find({
+  "repo": "my-repo",
+  "path": {"$match": "path/to/artifact/*"},
+  "type": "file",
+  "stat.downloaded": {"$gt": "2023-05-01T00:00:00.000Z"}
+}).include("name", "repo", "path", "stat.downloaded")
+
+Save the above AQL query to a file, e.g., query.aql.
+
+curl -u <username>:<password> -X POST "https://<artifactory-url>/artifactory/api/search/aql" -H "Content-Type: text/plain" -d @query.aql
+
+
