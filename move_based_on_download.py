@@ -25,13 +25,13 @@ def get_artifacts(artifactory_url, repo, path, auth):
         print(f"Failed to list artifacts: {response.text}")
         return []
 
-def get_artifact_metadata(artifactory_url, repo, path, name, auth):
-    url = f"{artifactory_url}/api/storage/{repo}/{path}/{name}"
+def get_artifact_properties(artifactory_url, repo, path, name, auth):
+    url = f"{artifactory_url}/api/storage/{repo}/{path}/{name}?properties"
     response = requests.get(url, auth=auth)
     if response.status_code == 200:
-        return response.json()
+        return response.json().get('properties', {})
     else:
-        print(f"Failed to get metadata for {name}: {response.text}")
+        print(f"Failed to get properties for {name}: {response.text}")
         return {}
 
 def move_artifact(artifactory_url, source_repo, source_path, name, target_repo, target_path, dry_run, auth):
@@ -54,7 +54,6 @@ def main():
     auth = (args.username, args.password)
 
     past_date = datetime.now() - timedelta(days=args.archive_days)
-    date_str = past_date.strftime("%Y-%m-%dT%H:%M:%S.000Z")
 
     artifacts = get_artifacts(args.artifactory_url, args.source_repo, args.source_path, auth)
 
@@ -63,11 +62,12 @@ def main():
             continue  # Skip folders
 
         name = artifact.get('uri').split('/')[-1]
-        metadata = get_artifact_metadata(args.artifactory_url, args.source_repo, args.source_path, name, auth)
-        last_downloaded = metadata.get('lastDownloaded', '')
+        properties = get_artifact_properties(args.artifactory_url, args.source_repo, args.source_path, name, auth)
+        last_downloaded = properties.get('lastDownloaded', [])
 
         if last_downloaded:
-            last_downloaded_date = datetime.strptime(last_downloaded, "%Y-%m-%dT%H:%M:%S.%fZ")
+            # Assume the property is a list of strings and take the first value
+            last_downloaded_date = datetime.strptime(last_downloaded[0], "%Y-%m-%dT%H:%M:%S.%fZ")
             if last_downloaded_date < past_date:
                 move_artifact(args.artifactory_url, args.source_repo, args.source_path, name, args.archive_repo, args.archive_path, args.dry_run, auth)
         else:
