@@ -31,7 +31,9 @@ def get_artifacts_via_aql(artifactory_url, repo, path, days, auth):
     response = requests.post(f"{artifactory_url}/api/search/aql", data=aql_query, auth=auth, headers=headers)
     
     if response.status_code == 200:
-        return response.json().get('results', [])
+        result = response.json().get('results', [])
+        print(f"Artifacts found: {len(result)}")
+        return result
     else:
         print(f"Failed to execute AQL query. Status code: {response.status_code}")
         print(f"Response body: {response.text}")
@@ -42,6 +44,8 @@ def move_artifact(artifactory_url, source_repo, source_path, name, target_repo, 
     target_full_path = f"{target_repo}/{target_path}/{name}"
     url = f"{artifactory_url}/api/move/{source_full_path}?to=/{target_full_path}"
     
+    print(f"Attempting to move artifact: {source_full_path} -> {target_full_path}")
+
     if dry_run:
         print(f"Dry run: {source_full_path} would be moved to {target_full_path}")
         return
@@ -60,8 +64,8 @@ def main():
     artifacts = get_artifacts_via_aql(args.artifactory_url, args.source_repo, args.source_path, args.archive_days, auth)
 
     for artifact in artifacts:
-        name = artifact['name']
-        move_artifact(args.artifactory_url, args.source_repo, args.source_path, name, args.archive_repo, args.archive_path, args.dry_run, auth)
+        print(f"Processing artifact: {artifact['name']}")
+        move_artifact(args.artifactory_url, args.source_repo, args.source_path, artifact['name'], args.archive_repo, args.archive_path, args.dry_run, auth)
 
 if __name__ == '__main__':
     main()
