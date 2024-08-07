@@ -17,7 +17,7 @@ def parse_arguments():
     return parser.parse_args()
 
 def get_artifacts(artifactory_url, repo, path, auth):
-    url = f"{artifactory_url}/api/storage/{repo}/{path}?list"
+    url = f"{artifactory_url}/api/storage/{repo}/{path}?list&deep=1"
     response = requests.get(url, auth=auth)
     if response.status_code == 200:
         return response.json().get('files', [])
@@ -34,22 +34,20 @@ def get_artifact_metadata(artifactory_url, repo, path, name, auth):
         print(f"Failed to get metadata for {name}: {response.text}")
         return {}
 
-def move_artifact(artifactory_url, repo, path, name, target_repo, target_path, dry_run, auth):
-    source_url = f"{artifactory_url}/api/storage/{repo}/{path}/{name}"
-    target_url = f"{artifactory_url}/api/move/{source_url}"
-    payload = {
-        "targetRepo": target_repo,
-        "targetPath": target_path,
-        "dryRun": dry_run
-    }
-    response = requests.post(target_url, auth=auth, headers={"Content-Type": "application/json"}, data=json.dumps(payload))
+def move_artifact(artifactory_url, source_repo, source_path, name, target_repo, target_path, dry_run, auth):
+    source_full_path = f"{source_repo}/{source_path}/{name}"
+    target_full_path = f"{target_repo}/{target_path}/{name}"
+    url = f"{artifactory_url}/api/move/{source_full_path}?to=/{target_full_path}"
+    
+    if dry_run:
+        print(f"Dry run: {source_full_path} would be moved to {target_full_path}")
+        return
+
+    response = requests.post(url, auth=auth)
     if response.status_code == 200:
-        if dry_run:
-            print(f"Dry run: {path}/{name} would be moved to {target_repo}/{target_path}")
-        else:
-            print(f"Successfully moved {path}/{name} to {target_repo}/{target_path}")
+        print(f"Successfully moved {source_full_path} to {target_full_path}")
     else:
-        print(f"Failed to move {path}/{name}: {response.text}")
+        print(f"Failed to move {source_full_path}: {response.text}")
 
 def main():
     args = parse_arguments()
@@ -61,9 +59,12 @@ def main():
     artifacts = get_artifacts(args.artifactory_url, args.source_repo, args.source_path, auth)
 
     for artifact in artifacts:
+        if artifact.get('folder', False):
+            continue  # Skip folders
+
         name = artifact.get('uri').split('/')[-1]
         metadata = get_artifact_metadata(args.artifactory_url, args.source_repo, args.source_path, name, auth)
-        last_downloaded = metadata.get('lastModified', '')
+        last_downloaded = metadata.get('lastDownloaded', '')
 
         if last_downloaded:
             last_downloaded_date = datetime.strptime(last_downloaded, "%Y-%m-%dT%H:%M:%S.%fZ")
